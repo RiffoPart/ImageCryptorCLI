@@ -7,6 +7,7 @@ int main(int argc, char** argv)
 
     cv::Mat img = cv::imread(path, cv::IMREAD_COLOR);
 
+
     cv::imshow(path, img);
     cv::waitKey(0);
     
