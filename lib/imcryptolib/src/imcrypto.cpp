@@ -29,4 +29,14 @@ std::ostream& operator<<(std::ostream& cout, const cv::Vec3b& color)
     return cout << "RGB(" << (int)color[2] << " " << (int)color[1] << " " << (int)color[0] << ")";
 }
 
+int32_t getSeed(const std::string& string_key) 
+{
+    int32_t vkey = 0;
+    for (int i = 1 ; i < string_key.size() - 1; i++) {
+        vkey += ((string_key[i] * string_key[i+1]) - (string_key[i-1] * i)) + i + string_key[i] + string_key[string_key[i-1] % (string_key.size()-1)];
+        vkey += vkey / 0xFF + string_key.size() + i - (string_key[i-1] * i);
+    }
+    return vkey;
+}
+
 #endif //_IMCRYPTO_CPP_

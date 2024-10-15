@@ -11,4 +11,6 @@ uchar getChFromColor(cv::Vec3b color);
 
 std::ostream& operator<<(std::ostream& cout, const cv::Vec3b& color);
 
+int32_t getSeed(const std::string& string_key);
+
 #endif //_IMCRYPTO_HPP_
