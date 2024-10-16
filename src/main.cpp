@@ -56,7 +56,8 @@ int main(int argc, char** argv)
     // cv::waitKey(0);
 
     po::options_description desc("Usage: \n\timcrypto -e -s <path_to_img> -o [path_to_out_image=out.*] -t <path_to_text_file> -k <crypt key>\n\
-                                           \timcrypto -d -s <path_to_img> -o [path_to_out_text_file=out.txt] -k <crypt key>");
+    \timcrypto -d -s <path_to_img> -o [path_to_out_text_file=out.txt] -k <crypt key>\n\nArguments");
+
 
     try
     {
