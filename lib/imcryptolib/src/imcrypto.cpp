@@ -39,4 +39,82 @@ int32_t getSeed(const std::string& string_key)
     return vkey;
 }
 
+
+void cryptFile(std::string image_path, std::string text_path, uint32_t key, std::string out) 
+{
+    std::fstream text_file(text_path);
+
+    if (!text_file.is_open()) {
+        std::cerr << "File " << text_path << "not opened." << std::endl;
+        abort();
+    }
+
+    std::stringstream buffer;
+    buffer << text_file.rdbuf();
+    std::string data = buffer.str();
+    text_file.close();
+
+    cv::Mat img = cv::imread(image_path, cv::IMREAD_COLOR);
+
+    if (data.size() >= img.size().width * img.size().height) {
+        std::cerr << "Input file more high\n";
+        abort();
+    }
+
+    std::vector<int> rnd_used;
+    srand(key);
+
+    for (int i = 0; i < data.size()+1; i++)
+    {
+        int pixel_index = 0;
+
+        do {
+            pixel_index = rand() % (img.size().width * img.size().height + 1);
+        } while (std::find(rnd_used.begin(), rnd_used.end(), pixel_index) != rnd_used.end());
+
+        rnd_used.push_back(pixel_index);
+        img.at<cv::Vec3b>(pixel_index) = insetInColor(img.at<cv::Vec3b>(pixel_index), (uchar)data[i]);
+
+        if (i == data.size()) {
+            insetInColor(img.at<cv::Vec3b>(pixel_index), 0x0);
+        }
+    }
+
+    cv::imwrite(out, img);
+}
+
+void decryptFile(std::string image_path, uint32_t key, std::string out)
+{
+    std::string data;
+
+    cv::Mat img = cv::imread(image_path, cv::IMREAD_COLOR);
+
+    std::vector<int> rnd_used;
+    srand(key);
+
+    uchar ch = 0;
+    do
+    {
+        int pixel_index = 0;
+
+        do {
+            pixel_index = rand() % (img.size().width * img.size().height + 1);
+        } while (std::find(rnd_used.begin(), rnd_used.end(), pixel_index) != rnd_used.end());
+
+        ch = getChFromColor(img.at<cv::Vec3b>(pixel_index));
+        data += ch;
+        rnd_used.push_back(pixel_index);
+
+    } while (ch != 0x0);
+
+
+    std::ofstream out_file(out);
+    if (!out_file.is_open()) {
+        std::cerr << "File " << out << "not opened or not created" << std::endl;
+        abort();
+    }
+
+    out_file << data;
+    out_file.close();
+}
 #endif //_IMCRYPTO_CPP_
