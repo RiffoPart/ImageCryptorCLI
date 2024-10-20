@@ -102,7 +102,8 @@ void decryptFile(std::string image_path, uint32_t key, std::string out)
         } while (std::find(rnd_used.begin(), rnd_used.end(), pixel_index) != rnd_used.end());
 
         ch = getChFromColor(img.at<cv::Vec3b>(pixel_index));
-        data += ch;
+        if (ch != 0x0)
+            data += ch;
         rnd_used.push_back(pixel_index);
 
     } while (ch != 0x0);
