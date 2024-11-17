@@ -62,7 +62,7 @@ int main(int argc, char** argv)
             cv::Mat img = cv::imread(vm["source"].as<std::string>(), cv::IMREAD_COLOR);
             std::string text = getTextFromFile(vm["text"].as<std::string>());
             text = "";
-            for (uint i : lzw::compress<uint>(text)) {
+            for (uint i : lzw::compress(text)) {
                 text += std::string(1, uchar(i));
             }
             
@@ -82,15 +82,14 @@ int main(int argc, char** argv)
             cv::Mat img = cv::imread(vm["source"].as<std::string>(), cv::IMREAD_COLOR);
             std::string compressed_data = decryptText(img, getSeed(vm["key"].as<std::string>()));
 
-            int uintSize = sizeof(uint);
-            std::vector<uint> data;
-            for (int i = 0; i < compressed_data.size(); i += uintSize) {
-                uint value = 0;
+            std::vector<int> data;
+            for (int i = 0; i < compressed_data.size(); i += 4) {
+                int value = 0;
 
-                value += compressed_data[i]     << 24;
-                value += compressed_data[i+1]   << 16;
-                value += compressed_data[i+2]   << 8;
-                value += compressed_data[i+3];
+                value += (int)compressed_data[i]     << 24;
+                value += (int)compressed_data[i+1]   << 16;
+                value += (int)compressed_data[i+2]   << 8;
+                value += (int)compressed_data[i+3];
 
                 data.push_back(value); 
             }
@@ -101,7 +100,7 @@ int main(int argc, char** argv)
                 abort();
             }
 
-            out_file << text;
+            // out_file << text;
             out_file.close();
 
         } else {
