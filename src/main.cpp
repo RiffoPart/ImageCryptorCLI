@@ -5,6 +5,23 @@
 
 namespace po = boost::program_options;
 
+std::string getTextFromFile(const std::string& filePath) 
+{
+    std::fstream text_file(filePath);
+
+    if (!text_file.is_open()) {
+        std::cerr << "File " << filePath << "not opened." << std::endl;
+        abort();
+    }
+
+    std::stringstream buffer;
+    buffer << text_file.rdbuf();
+    std::string data = buffer.str();
+    text_file.close();
+
+    return data;
+}
+
 int main(int argc, char** argv)
 {
     po::options_description desc("Usage: \n\timcrypto -e -s <path_to_img> -o [path_to_out_image=out.*] -t <path_to_text_file> -k <crypt key>\n\
@@ -41,7 +58,9 @@ int main(int argc, char** argv)
                 out_file_path = vm["out"].as<std::string>();
             }
 
-            cryptFile(vm["source"].as<std::string>(), vm["text"].as<std::string>(), getSeed(vm["key"].as<std::string>()), out_file_path);
+            cv::Mat img = cv::imread(vm["source"].as<std::string>(), cv::IMREAD_COLOR);
+            std::string text = getTextFromFile(vm["text"].as<std::string>());
+            cv::imwrite(out_file_path, cryptText(img, text, getSeed(vm["key"].as<std::string>())));
 
         } else if (vm["decrypt"].as<bool>()) {
             
@@ -53,6 +72,18 @@ int main(int argc, char** argv)
             }
 
             decryptFile(vm["source"].as<std::string>(), getSeed(vm["key"].as<std::string>()), out_file_path);
+
+            cv::Mat img = cv::imread(vm["source"].as<std::string>(), cv::IMREAD_COLOR);
+            std::string data = decryptText(img, getSeed(vm["key"].as<std::string>()));
+
+            std::ofstream out_file(out_file_path);
+            if (!out_file.is_open()) {
+                std::cerr << "File " << out_file_path << "not opened or not created" << std::endl;
+                abort();
+            }
+
+            out_file << data;
+            out_file.close();
 
         } else {
             throw std::exception();
