@@ -10,8 +10,8 @@ namespace lzw
     template<typename T>
     std::vector<T> compress(const std::string& input) {
         // Initialize
-        std::vector<int> result;
-        std::unordered_map<std::string, int> dict;
+        std::vector<T> result;
+        std::unordered_map<std::string, T> dict;
 
         for (int c = 0; c < 256; c++) {
             dict[std::string(1,c)] = c;
@@ -41,7 +41,7 @@ namespace lzw
     std::string decompress(const std::vector<T>& input) {
         // Initialize
         std::string result = "";
-        std::unordered_map<int, std::string> dict;
+        std::unordered_map<T, std::string> dict;
         for (int i = 0 ; i < 256; i++) {
             dict[i] = std::string(1,char(i));
             
