@@ -1,6 +1,7 @@
 #include <imcpyto.hpp>
 #include <iostream>
 #include <fstream>
+#include <lzw.h>
 #include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
@@ -60,6 +61,7 @@ int main(int argc, char** argv)
 
             cv::Mat img = cv::imread(vm["source"].as<std::string>(), cv::IMREAD_COLOR);
             std::string text = getTextFromFile(vm["text"].as<std::string>());
+            text = lzw::compress(text);
             cv::imwrite(out_file_path, cryptText(img, text, getSeed(vm["key"].as<std::string>())));
 
         } else if (vm["decrypt"].as<bool>()) {
