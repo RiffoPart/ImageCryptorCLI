@@ -40,6 +40,37 @@ int32_t getSeed(const std::string& string_key)
 }
 
 
+cv::Mat cryptText(cv::Mat img, std::string data, uint32_t key) 
+{
+    cv::Mat new_img = img;
+
+    if (data.size() >= new_img.size().width * new_img.size().height) {
+        std::cerr << "Input file more high\n";
+        abort();
+    }
+
+    std::vector<int> rnd_used;
+    srand(key);
+
+    for (int i = 0; i < data.size()+1; i++)
+    {
+        int pixel_index = 0;
+
+        do {
+            pixel_index = rand() % (new_img.size().width * new_img.size().height + 1);
+        } while (std::find(rnd_used.begin(), rnd_used.end(), pixel_index) != rnd_used.end());
+
+        rnd_used.push_back(pixel_index);
+        new_img.at<cv::Vec3b>(pixel_index) = insetInColor(new_img.at<cv::Vec3b>(pixel_index), (uchar)data[i]);
+
+        if (i == data.size()) {
+            insetInColor(new_img.at<cv::Vec3b>(pixel_index), 0x0);
+        }
+    }
+
+    return new_img;
+}
+
 void cryptFile(std::string image_path, std::string text_path, uint32_t key, std::string out) 
 {
     std::fstream text_file(text_path);
@@ -117,5 +148,31 @@ void decryptFile(std::string image_path, uint32_t key, std::string out)
 
     out_file << data;
     out_file.close();
+}
+
+std::string decryptText(cv::Mat img, uint32_t key) 
+{
+    std::string data;
+
+    std::vector<int> rnd_used;
+    srand(key);
+
+    uchar ch = 0;
+    do
+    {
+        int pixel_index = 0;
+
+        do {
+            pixel_index = rand() % (img.size().width * img.size().height + 1);
+        } while (std::find(rnd_used.begin(), rnd_used.end(), pixel_index) != rnd_used.end());
+
+        ch = getChFromColor(img.at<cv::Vec3b>(pixel_index));
+        if (ch != 0x0)
+            data += ch;
+        rnd_used.push_back(pixel_index);
+
+    } while (ch != 0x0);
+
+    return data;
 }
 #endif //_IMCRYPTO_CPP_

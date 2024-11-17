@@ -19,4 +19,7 @@ void cryptFile(std::string image_path, std::string text_path, uint32_t key, std:
 void decryptFile(std::string image_path, uint32_t key, std::string out);
 
 
+cv::Mat cryptText(cv::Mat img, std::string data, uint32_t key);
+std::string decryptText(cv::Mat img, uint32_t key);
+
 #endif //_IMCRYPTO_HPP_
