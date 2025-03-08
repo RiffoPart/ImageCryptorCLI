@@ -1,27 +1,9 @@
 #include <imcpyto.hpp>
 #include <iostream>
 #include <fstream>
-#include <lzw.h>
 #include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
-
-std::string getTextFromFile(const std::string& filePath) 
-{
-    std::fstream text_file(filePath);
-
-    if (!text_file.is_open()) {
-        std::cerr << "File " << filePath << "not opened." << std::endl;
-        abort();
-    }
-
-    std::stringstream buffer;
-    buffer << text_file.rdbuf();
-    std::string data = buffer.str();
-    text_file.close();
-
-    return data;
-}
 
 int main(int argc, char** argv)
 {
@@ -59,14 +41,7 @@ int main(int argc, char** argv)
                 out_file_path = vm["out"].as<std::string>();
             }
 
-            cv::Mat img = cv::imread(vm["source"].as<std::string>(), cv::IMREAD_COLOR);
-            std::string text = getTextFromFile(vm["text"].as<std::string>());
-            text = "";
-            for (uint i : lzw::compress(text)) {
-                text += std::string(1, uchar(i));
-            }
-            
-            cv::imwrite(out_file_path, cryptText(img, text, getSeed(vm["key"].as<std::string>())));
+            cryptFile(vm["source"].as<std::string>(), vm["text"].as<std::string>(), getSeed(vm["key"].as<std::string>()), out_file_path);
 
         } else if (vm["decrypt"].as<bool>()) {
             
@@ -78,30 +53,6 @@ int main(int argc, char** argv)
             }
 
             decryptFile(vm["source"].as<std::string>(), getSeed(vm["key"].as<std::string>()), out_file_path);
-
-            cv::Mat img = cv::imread(vm["source"].as<std::string>(), cv::IMREAD_COLOR);
-            std::string compressed_data = decryptText(img, getSeed(vm["key"].as<std::string>()));
-
-            std::vector<int> data;
-            for (int i = 0; i < compressed_data.size(); i += 4) {
-                int value = 0;
-
-                value += (int)compressed_data[i]     << 24;
-                value += (int)compressed_data[i+1]   << 16;
-                value += (int)compressed_data[i+2]   << 8;
-                value += (int)compressed_data[i+3];
-
-                data.push_back(value); 
-            }
-            std::string text = lzw::decompress(data);
-            std::ofstream out_file(out_file_path);
-            if (!out_file.is_open()) {
-                std::cerr << "File " << out_file_path << "not opened or not created" << std::endl;
-                abort();
-            }
-
-            // out_file << text;
-            out_file.close();
 
         } else {
             throw std::exception();
