@@ -3,27 +3,6 @@
 
 #include "../include/imcpyto.hpp"
 
-cv::Vec3b insetInColor(cv::Vec3b color, uchar ch)
-{
-    color[0] = color[0] & 0b11111000; //BLUE
-    color[1] = color[1] & 0b11111100; //GREEN
-    color[2] = color[2] & 0b11111000; //RED
-
-    color[2] += (ch & 0b11100000) >> 5; // RED
-    color[1] += (ch & 0b00011000) >> 3; // GREEN
-    color[0] += (ch & 0b00000111);      // BLUE
-
-    return color;
-}
-
-uchar getChFromColor(cv::Vec3b color) 
-{
-    uchar ch = 0;
-    ch = ((color[2] & 0b00000111) << 5) + ((color[1] & 0b00000011) << 3) + (color[0] & 0b00000111);
-
-    return ch;
-}
-
 std::ostream& operator<<(std::ostream& cout, const cv::Vec3b& color) 
 {
     return cout << "RGB(" << (int)color[2] << " " << (int)color[1] << " " << (int)color[0] << ")";
@@ -39,20 +18,90 @@ int32_t getSeed(const std::string& string_key)
     return vkey;
 }
 
-
-cv::Mat cryptText(cv::Mat img, std::string data, uint32_t key) 
+uchar base_callback::unpack::RGB323_2CH(cv::Vec3b colorOfPixel)
 {
-    cv::Mat new_img = img;
+    return ((colorOfPixel[2] & 0b00000111) << 5) + ((colorOfPixel[1] & 0b00000011) << 3) + (colorOfPixel[0] & 0b00000111);
+}
 
-    if (data.size() >= new_img.size().width * new_img.size().height) {
+uchar base_callback::unpack::RGB332_2CH(cv::Vec3b colorOfPixel)
+{
+    return ((colorOfPixel[2] & 0b00000111) << 5) + ((colorOfPixel[1] & 0b00000111) << 2) + (colorOfPixel[0] & 0b00000011);
+}
+
+uchar base_callback::unpack::RGB233_2CH(cv::Vec3b colorOfPixel)
+{
+    return ((colorOfPixel[2] & 0b00000011) << 6) + ((colorOfPixel[1] & 0b00000111) << 3) + (colorOfPixel[0] & 0b00000111);
+}
+
+cv::Vec3b base_callback::pack::CH2RGB323(cv::Vec3b colorOfPixel, uchar ch)
+{
+    colorOfPixel[0] = colorOfPixel[0] & 0b11111000; //BLUE
+    colorOfPixel[1] = colorOfPixel[1] & 0b11111100; //GREEN
+    colorOfPixel[2] = colorOfPixel[2] & 0b11111000; //RED
+
+    colorOfPixel[2] += (ch & 0b11100000) >> 5; // RED
+    colorOfPixel[1] += (ch & 0b00011000) >> 3; // GREEN
+    colorOfPixel[0] += (ch & 0b00000111);      // BLUE
+
+    return colorOfPixel;
+}
+
+cv::Vec3b base_callback::pack::CH2RGB332(cv::Vec3b colorOfPixel, uchar ch)
+{
+    colorOfPixel[0] = colorOfPixel[0] & 0b11111100; //BLUE
+    colorOfPixel[1] = colorOfPixel[1] & 0b11111000; //GREEN
+    colorOfPixel[2] = colorOfPixel[2] & 0b11111000; //RED
+
+    colorOfPixel[2] += (ch & 0b11100000) >> 5; // RED
+    colorOfPixel[1] += (ch & 0b00011100) >> 2; // GREEN
+    colorOfPixel[0] += (ch & 0b00000011);      // BLUE
+
+    return colorOfPixel;
+}
+
+cv::Vec3b base_callback::pack::CH2RGB233(cv::Vec3b colorOfPixel, uchar ch)
+{
+    colorOfPixel[0] = colorOfPixel[0] & 0b11111000; //BLUE
+    colorOfPixel[1] = colorOfPixel[1] & 0b11111000; //GREEN
+    colorOfPixel[2] = colorOfPixel[2] & 0b11111100; //RED
+
+    colorOfPixel[2] += (ch & 0b11000000) >> 6; // RED
+    colorOfPixel[1] += (ch & 0b00111000) >> 3; // GREEN
+    colorOfPixel[0] += (ch & 0b00000111);      // BLUE
+
+    return colorOfPixel;
+}
+
+Cryptor::Cryptor(const int32_t& seed, insert_callback callback)
+{
+    _seed = seed; 
+    _callback = callback;
+}
+
+void Cryptor::setSeed(const int32_t& seed) 
+{
+    _seed = seed;
+}
+
+void Cryptor::setInsertCallback(insert_callback callback)
+{
+    _callback = callback;
+}
+
+cv::Mat Cryptor::crypt(cv::Mat sourceMat, std::string buf)
+{
+    cv::Mat new_img = sourceMat;
+    auto size = buf.size();
+
+    if (size >= new_img.size().width * new_img.size().height) {
         std::cerr << "Input file more high\n";
         abort();
     }
 
     std::vector<int> rnd_used;
-    srand(key);
+    srand(_seed);
 
-    for (int i = 0; i < data.size()+1; i++)
+    for (int i = 0; i < size+1; i++)
     {
         int pixel_index = 0;
 
@@ -61,67 +110,38 @@ cv::Mat cryptText(cv::Mat img, std::string data, uint32_t key)
         } while (std::find(rnd_used.begin(), rnd_used.end(), pixel_index) != rnd_used.end());
 
         rnd_used.push_back(pixel_index);
-        new_img.at<cv::Vec3b>(pixel_index) = insetInColor(new_img.at<cv::Vec3b>(pixel_index), (uchar)data[i]);
+        new_img.at<cv::Vec3b>(pixel_index) = _callback(new_img.at<cv::Vec3b>(pixel_index), (uchar)buf[i]);
 
-        if (i == data.size()) {
-            insetInColor(new_img.at<cv::Vec3b>(pixel_index), 0x0);
+        if (i == size) {
+            _callback(new_img.at<cv::Vec3b>(pixel_index), 0x0);
         }
     }
 
     return new_img;
 }
 
-void cryptFile(std::string image_path, std::string text_path, uint32_t key, std::string out) 
+Encryptor::Encryptor(const int32_t& seed, unpack_callback callback)
 {
-    std::fstream text_file(text_path);
-
-    if (!text_file.is_open()) {
-        std::cerr << "File " << text_path << "not opened." << std::endl;
-        abort();
-    }
-
-    std::stringstream buffer;
-    buffer << text_file.rdbuf();
-    std::string data = buffer.str();
-    text_file.close();
-
-    cv::Mat img = cv::imread(image_path, cv::IMREAD_COLOR);
-
-    if (data.size() >= img.size().width * img.size().height) {
-        std::cerr << "Input file more high\n";
-        abort();
-    }
-
-    std::vector<int> rnd_used;
-    srand(key);
-
-    for (int i = 0; i < data.size()+1; i++)
-    {
-        int pixel_index = 0;
-
-        do {
-            pixel_index = rand() % (img.size().width * img.size().height + 1);
-        } while (std::find(rnd_used.begin(), rnd_used.end(), pixel_index) != rnd_used.end());
-
-        rnd_used.push_back(pixel_index);
-        img.at<cv::Vec3b>(pixel_index) = insetInColor(img.at<cv::Vec3b>(pixel_index), (uchar)data[i]);
-
-        if (i == data.size()) {
-            insetInColor(img.at<cv::Vec3b>(pixel_index), 0x0);
-        }
-    }
-
-    cv::imwrite(out, img);
+    _seed = seed; 
+    _callback = callback;
 }
 
-void decryptFile(std::string image_path, uint32_t key, std::string out)
+void Encryptor::setSeed(const int32_t& seed) 
+{
+    _seed = seed;
+}
+
+void Encryptor::setInsertCallback(unpack_callback callback)
+{
+    _callback = callback;
+}
+
+std::string Encryptor::encrypt(cv::Mat sourceMat)
 {
     std::string data;
 
-    cv::Mat img = cv::imread(image_path, cv::IMREAD_COLOR);
-
     std::vector<int> rnd_used;
-    srand(key);
+    srand(_seed);
 
     uchar ch = 0;
     do
@@ -129,44 +149,10 @@ void decryptFile(std::string image_path, uint32_t key, std::string out)
         int pixel_index = 0;
 
         do {
-            pixel_index = rand() % (img.size().width * img.size().height + 1);
+            pixel_index = rand() % (sourceMat.size().width * sourceMat.size().height + 1);
         } while (std::find(rnd_used.begin(), rnd_used.end(), pixel_index) != rnd_used.end());
 
-        ch = getChFromColor(img.at<cv::Vec3b>(pixel_index));
-        if (ch != 0x0)
-            data += ch;
-        rnd_used.push_back(pixel_index);
-
-    } while (ch != 0x0);
-
-
-    std::ofstream out_file(out);
-    if (!out_file.is_open()) {
-        std::cerr << "File " << out << "not opened or not created" << std::endl;
-        abort();
-    }
-
-    out_file << data;
-    out_file.close();
-}
-
-std::string decryptText(cv::Mat img, uint32_t key) 
-{
-    std::string data;
-
-    std::vector<int> rnd_used;
-    srand(key);
-
-    uchar ch = 0;
-    do
-    {
-        int pixel_index = 0;
-
-        do {
-            pixel_index = rand() % (img.size().width * img.size().height + 1);
-        } while (std::find(rnd_used.begin(), rnd_used.end(), pixel_index) != rnd_used.end());
-
-        ch = getChFromColor(img.at<cv::Vec3b>(pixel_index));
+        ch = _callback(sourceMat.at<cv::Vec3b>(pixel_index));
         if (ch != 0x0)
             data += ch;
         rnd_used.push_back(pixel_index);
@@ -175,4 +161,5 @@ std::string decryptText(cv::Mat img, uint32_t key)
 
     return data;
 }
+
 #endif //_IMCRYPTO_CPP_
