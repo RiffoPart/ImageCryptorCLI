@@ -1,6 +1,7 @@
 #include <imcpyto.hpp>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
@@ -40,8 +41,16 @@ int main(int argc, char** argv)
             } else {
                 out_file_path = vm["out"].as<std::string>();
             }
+           
+            std::ifstream t(vm["text"].as<std::string>());
+            std::stringstream buffer;
+            buffer << t.rdbuf();
+            t.close();
 
-            cryptFile(vm["source"].as<std::string>(), vm["text"].as<std::string>(), getSeed(vm["key"].as<std::string>()), out_file_path);
+            Cryptor crypt(getSeed(vm["key"].as<std::string>()), base_callback::pack::CH2RGB323);
+            cv::Mat newImage = crypt.crypt(cv::imread(vm["source"].as<std::string>()), buffer.str());
+            cv::imwrite(out_file_path, newImage);
+
 
         } else if (vm["decrypt"].as<bool>()) {
             
@@ -52,7 +61,14 @@ int main(int argc, char** argv)
                 out_file_path = vm["out"].as<std::string>();
             }
 
-            decryptFile(vm["source"].as<std::string>(), getSeed(vm["key"].as<std::string>()), out_file_path);
+            // decryptFile(vm["source"].as<std::string>(), getSeed(vm["key"].as<std::string>()), out_file_path);
+
+            Encryptor encrypt(getSeed(vm["key"].as<std::string>()), base_callback::unpack::RGB323_2CH);
+            std::string data = encrypt.encrypt(cv::imread(vm["source"].as<std::string>(), cv::IMREAD_COLOR));
+
+            std::ofstream f(out_file_path);
+            f << data;
+            f.close();
 
         } else {
             throw std::exception();

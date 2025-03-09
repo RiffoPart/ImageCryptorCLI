@@ -48,7 +48,7 @@ public:
 
 class Encryptor{
 private:
-unpack_callback _callback;
+    unpack_callback _callback;
     int32_t _seed;
 
 public:
